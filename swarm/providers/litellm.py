@@ -30,11 +30,14 @@ class LiteLLMProvider:
         except ImportError as e:
             raise ProviderError("litellm not installed. pip install swarm[litellm]") from e
         api_msgs = [{"role": m.role, "content": m.content} for m in messages]
-        response = await litellm.acompletion(
-            model=self.model,
-            messages=api_msgs,
-            temperature=temperature or self.temperature,
-            max_tokens=max_tokens or self.max_tokens,
-            **self._kwargs,
-        )
+        try:
+            response = await litellm.acompletion(
+                model=self.model,
+                messages=api_msgs,
+                temperature=temperature or self.temperature,
+                max_tokens=max_tokens or self.max_tokens,
+                **self._kwargs,
+            )
+        except Exception as e:
+            raise ProviderError(f"LiteLLM error: {e}") from e
         return response.choices[0].message.content

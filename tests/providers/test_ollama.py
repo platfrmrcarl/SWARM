@@ -1,4 +1,5 @@
 import pytest
+import httpx
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from swarm.core.types import Message
@@ -38,7 +39,7 @@ async def test_ollama_raises_on_http_error():
     mock_client = AsyncMock()
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
-    mock_client.post = AsyncMock(side_effect=Exception("Connection failed"))
+    mock_client.post = AsyncMock(side_effect=httpx.HTTPError("Connection failed"))
     with patch("httpx.AsyncClient", return_value=mock_client):
         from swarm.core.errors import ProviderError
         with pytest.raises(ProviderError, match="Ollama error"):

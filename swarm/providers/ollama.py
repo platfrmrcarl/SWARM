@@ -44,6 +44,7 @@ class OllamaProvider:
                 response.raise_for_status()
             except httpx.HTTPError as e:
                 raise ProviderError(f"Ollama error: {e}") from e
-            except Exception as e:
-                raise ProviderError(f"Ollama error: {e}") from e
-        return response.json()["message"]["content"]
+        try:
+            return response.json()["message"]["content"]
+        except (KeyError, ValueError) as e:
+            raise ProviderError(f"Ollama unexpected response format: {e}") from e
