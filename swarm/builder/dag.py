@@ -34,6 +34,8 @@ class DAG:
                 return
             visited.add(name)
             for dep in self._nodes[name].deps:
+                if dep not in self._nodes:
+                    raise ValueError(f"DAG node {name!r} depends on unknown node {dep!r}")
                 visit(dep)
             order.append(name)
 
