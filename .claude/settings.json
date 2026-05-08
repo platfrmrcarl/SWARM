@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch",
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(pwd)", "Bash(echo:*)", "Bash(which:*)",
+      "Bash(tree:*)", "Bash(find:*)", "Bash(head:*)", "Bash(tail:*)",
+      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)",
+      "Bash(git branch:*)", "Bash(git add:*)", "Bash(git commit:*)",
+      "Bash(git checkout:*)", "Bash(git switch:*)", "Bash(git pull)",
+      "Bash(git fetch:*)", "Bash(git stash:*)",
+      "Bash(npm install:*)", "Bash(npm run:*)", "Bash(npm test:*)",
+      "Bash(npm ci)", "Bash(npm list:*)", "Bash(npx:*)", "Bash(pnpm:*)", "Bash(yarn:*)",
+      "Bash(tsc:*)", "Bash(tsx:*)", "Bash(node:*)",
+      "Bash(eslint:*)", "Bash(prettier:*)", "Bash(jest:*)", "Bash(vitest:*)",
+      "Bash(python:*)", "Bash(python3:*)", "Bash(pip:*)", "Bash(pip3:*)",
+      "Bash(uv:*)", "Bash(uvx:*)", "Bash(pytest:*)",
+      "Bash(ruff:*)", "Bash(mypy:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)", "Bash(git reset:*)", "Bash(git rebase:*)", "Bash(git merge:*)",
+      "Bash(npm publish:*)", "Bash(npm version:*)",
+      "Bash(pip install:*)", "Bash(uv add:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)", "Bash(sudo:*)",
+      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git reset --hard:*)",
+      "Read(./.env)", "Read(./.env.*)", "Read(./**/.env)", "Read(./**/.env.*)",
+      "Read(./**/serviceAccountKey.json)", "Read(./**/*.pem)", "Read(./**/*.key)"
+    ]
+  }
+}
