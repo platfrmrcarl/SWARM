@@ -5,7 +5,7 @@
 
 ## Overview
 
-A Python library implementing seven swarm agent design patterns (six from `SWARM.md` plus Variant+Judge), with a hybrid composition mode that lets any number of patterns be combined to tackle complex tasks. Agents are LLMs backed by Claude (default: subscription/auth-token mode), Claude API key, Ollama (open-source models), or LiteLLM.
+A Python library implementing ten swarm agent design patterns, with a hybrid composition mode that lets any number of patterns be combined to tackle complex tasks. Agents are LLMs backed by Claude (default: subscription/auth-token mode), Claude API key, Ollama (open-source models), or LiteLLM.
 
 ## Decisions Summary
 
@@ -54,7 +54,10 @@ swarm/
 │   ├── decentralized.py
 │   ├── adaptive.py
 │   ├── mesh.py
-│   └── variant_judge.py
+│   ├── variant_judge.py
+│   ├── reflection.py
+│   ├── broadcast.py
+│   └── auction.py
 
 ├── builder/                 # Layer 4: swarm composition
 │   ├── swarm.py             # Swarm builder class
@@ -229,6 +232,105 @@ return SwarmResult(pattern="variant_judge", results=[*results, final], final_out
 
 Configurable `judge_prompt_template` (default instructs the judge to evaluate and select/synthesize). At least 2 agents required (1+ variants + 1 judge).
 
+### Reflection
+A generator agent produces output; a critic agent evaluates it. If the critic's `confidence < threshold`, the generator revises using the critique. Repeats until the critic is satisfied or `max_iterations` (default 3) is reached.
+
+- **1-agent form**: single agent plays both roles — generates, then critiques its own output, then regenerates.
+- **2-agent form**: `agents[0]` = generator, `agents[1]` = critic.
+
+```python
+generator, critic = (agents[0], agents[0]) if len(agents) == 1 else (agents[0], agents[1])
+output = await generator.run(task, ctx)
+for _ in range(max_iterations):
+    critique = await critic.run(output.content, ctx)
+    ctx.add_result(critique)
+    if critique.confidence >= threshold:
+        break
+    output = await generator.run(
+        f"Original task: {task}\nCritique: {critique.content}\nRevise:", ctx
+    )
+    ctx.add_result(output)
+return SwarmResult(pattern="reflection", results=ctx.results, final_output=output.content)
+```
+
+Configurable `confidence_threshold` (default 0.8) and `max_iterations` (default 3).
+
+### Broadcast
+First agent = broadcaster: runs on the task and produces an event/message. All remaining agents = listeners: receive the broadcast output in parallel and each responds independently. Results are aggregated (concatenate by default).
+
+Distinct from Parallel in that there is an explicit triggering step — the broadcaster shapes WHAT the listeners receive, rather than all agents seeing the raw task.
+
+```python
+broadcaster, *listeners = agents
+event = await broadcaster.run(task, ctx)
+ctx.state["broadcast_event"] = event.content
+ctx.add_result(event)
+responses = await asyncio.gather(*[l.run(event.content, ctx) for l in listeners])
+for r in responses:
+    ctx.add_result(r)
+merged = merge_results([event, *responses], strategy=merge_strategy)
+return SwarmResult(pattern="broadcast", results=[event, *responses], final_output=merged)
+```
+
+Configurable `merge_strategy`: `"concatenate"` | `"synthesize"` (default `"concatenate"`).
+
+### Auction
+All agents evaluate the task in parallel (bid round), each returning a `confidence` score representing their self-assessed capability. The agent with the highest confidence wins and executes the task fully (execution round).
+
+Agents should be prompted with a `bid_prefix` (default `"[BID]"`) to signal bid mode — system prompts should instruct agents to respond with a confidence score and rationale rather than attempting the full task.
+
+```python
+bids = await asyncio.gather(*[a.run(f"{bid_prefix} {task}", ctx) for a in agents])
+winner_bid = max(bids, key=lambda r: r.confidence)
+winning_agent = next(a for a in agents if a.name == winner_bid.agent_name)
+result = await winning_agent.run(task, ctx)
+return SwarmResult(pattern="auction", results=[*bids, result], final_output=result.content)
+```
+
+Configurable `bid_prefix` (default `"[BID]"`). At least 2 agents required.
+
+---
+
+## Agent Roles
+
+Roles are not separate pattern classes — they are behavioral contracts expressed through `LLMAgent(system_prompt=...)`. The pattern determines structure; the role determines behavior. Any agent can play any role in any pattern.
+
+| Role | Responsibility | Typical pattern context |
+|---|---|---|
+| **Planner** | Breaks high-level goals into ordered steps | Hierarchical (coordinator), Sequential (first agent) |
+| **Orchestrator** | Coordinates agent interactions based on a plan | Hierarchical (coordinator), Adaptive (router) |
+| **Executor/Worker** | Executes a specific subtask; may use tools | All patterns (worker agents) |
+| **Observer/Monitor** | Watches state/events; reports findings without acting | Mesh (monitoring agents), Broadcast (listener) |
+| **Judge/Critic** | Validates output quality; provides structured feedback | Variant+Judge (judge), Reflection (critic) |
+| **Enforcer** | Guards protocol compliance; blocks or flags violations | Sequential (last agent), any pattern as a post-step |
+
+Roles are composable — the same `LLMAgent` instance can act as a Planner in one DAG node and a Judge in another.
+
+---
+
+## Advanced Mechanisms
+
+### Shared Memory / Blackboard
+`SwarmContext.state` IS the blackboard. Any agent can read or write any key during `run()`. Patterns use namespaced keys by convention (e.g., `"mesh_round"`, `"broadcast_event"`, `"{node}.output"`).
+
+### Context-Minimization
+`LLMAgent.run()` passes the last 10 turns of `ctx.history` by default. For tasks where agents should only receive task-specific context (not shared history), set `context_window=0` on the `LLMAgent` — it will only receive its `system_prompt` + the immediate task string, preventing context bleed between agents.
+
+```python
+LLMAgent(name="executor", provider=..., system_prompt="...", context_window=0)
+```
+
+### Pattern Aliases (Mapping to Common Terminology)
+
+| Common name | Library pattern |
+|---|---|
+| Pipeline | Sequential |
+| Orchestrator-Worker / Delegative | Hierarchical |
+| Autonomous Handoffs / Specialization with Handoffs | Adaptive |
+| Debate / Competitive | Variant+Judge |
+| Fan-Out/Fan-In | Parallel |
+| Blackboard | SwarmContext.state (mechanism, not a pattern) |
+
 ---
 
 ## Swarm Builder & DAG Engine
@@ -245,6 +347,9 @@ result = await (Swarm()
     .sequential("write", [writer, editor])
     .adaptive("review", [reviewer, specialist])
     .variant_judge("select", [draft_a, draft_b, judge])
+    .reflection("refine", [generator, critic])
+    .broadcast("notify", [broadcaster, listener_a, listener_b])
+    .auction("assign", [specialist_a, specialist_b, specialist_c])
     .run("task"))
 
 # Branching (explicit after=)
@@ -351,7 +456,8 @@ tests/
 ├── agents/      test_llm_agent.py, test_base_agent.py
 ├── patterns/    test_sequential.py, test_parallel.py, test_hierarchical.py
 │                test_decentralized.py, test_adaptive.py, test_mesh.py
-│                test_variant_judge.py
+│                test_variant_judge.py, test_reflection.py
+│                test_broadcast.py, test_auction.py
 ├── builder/     test_swarm.py, test_dag.py, test_config.py
 └── cli/         test_main.py
 ```
