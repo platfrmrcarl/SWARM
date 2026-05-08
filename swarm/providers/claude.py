@@ -19,8 +19,8 @@ class ClaudeProvider:
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.auth_mode = "api_key" if api_key else "subscription"
-        self._api_key = api_key
+        self.auth_mode = "api_key" if api_key is not None else "subscription"
+        self._client: AsyncAnthropic | None = AsyncAnthropic(api_key=api_key) if api_key is not None else None
 
     async def complete(
         self,
@@ -51,7 +51,7 @@ class ClaudeProvider:
         temperature: float | None,
         max_tokens: int | None,
     ) -> str:
-        client = AsyncAnthropic(api_key=self._api_key)
+        client = self._client
         api_msgs = [
             {"role": m.role, "content": m.content}
             for m in messages
@@ -67,6 +67,8 @@ class ClaudeProvider:
         if system:
             kwargs["system"] = system
         response = await client.messages.create(**kwargs)
+        if not response.content:
+            raise ProviderError("Empty response from Anthropic API")
         return response.content[0].text
 
     def _format_prompt(self, messages: list[Message]) -> str:
