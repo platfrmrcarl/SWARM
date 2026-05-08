@@ -7,11 +7,15 @@ from swarm.core.types import AgentResult, SwarmContext, SwarmResult
 
 def _merge(results: list[AgentResult], strategy: str) -> str:
     if strategy == "vote":
+        if not results:
+            return ""
         counts = Counter(r.content for r in results)
         return counts.most_common(1)[0][0]
     if strategy == "synthesize":
         return "\n\n".join(f"{i+1}. {r.content}" for i, r in enumerate(results))
-    return "\n\n".join(r.content for r in results)
+    if strategy == "concatenate":
+        return "\n\n".join(r.content for r in results)
+    raise ValueError(f"Unknown merge strategy: {strategy!r}")
 
 
 class ParallelPattern:
