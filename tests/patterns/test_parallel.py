@@ -41,4 +41,4 @@ async def test_parallel_synthesize_merge(ctx):
     result = await ParallelPattern(merge_strategy="synthesize").execute(
         agents, "task", ctx
     )
-    assert "1." in result.final_output or "part1" in result.final_output
+    assert result.final_output == "1. part1\n\n2. part2"
