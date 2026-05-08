@@ -1,4 +1,5 @@
 from __future__ import annotations
+from swarm.core.errors import PatternError
 from swarm.core.protocols import Agent
 from swarm.core.types import AgentResult, SwarmContext, SwarmResult
 
@@ -11,6 +12,8 @@ class AdaptivePattern:
     async def execute(
         self, agents: list[Agent], task: str, ctx: SwarmContext
     ) -> SwarmResult:
+        if not agents:
+            raise PatternError("AdaptivePattern requires at least 1 agent")
         agent_map = {a.name: a for a in agents}
         current = agents[0]
         result: AgentResult | None = None
