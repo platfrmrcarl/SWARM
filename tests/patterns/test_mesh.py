@@ -11,10 +11,10 @@ def ctx():
 
 
 async def test_mesh_runs_multiple_rounds(ctx):
-    agents = [FakeAgent(f"a{i}", response="stable") for i in range(3)]
+    agents = [FakeAgent(f"a{i}", response=f"answer{i}") for i in range(3)]
     result = await MeshPattern(max_rounds=3).execute(agents, "task", ctx)
     assert result.pattern == "mesh"
-    assert result.final_output != ""
+    assert len(result.results) == 3
 
 
 async def test_mesh_converges_when_all_agree(ctx):
