@@ -1,0 +1,99 @@
+<h2>Provider & Auth Layer</h2>
+<p class="subtitle">Claude auth token (default) · Claude API key (optional) · Ollama · LiteLLM — <code>swarm/providers/</code></p>
+
+<div class="mockup">
+  <div class="mockup-header">Claude auth modes — modeled after AIDE project</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0"># swarm/providers/claude.py
+
+class ClaudeProvider:
+    """
+    auth_mode="subscription" (default) — uses Claude CLI via subprocess.
+      No API key needed. Requires `claude` CLI installed + logged in.
+
+    auth_mode="api_key" — uses Anthropic SDK directly.
+      Reads ANTHROPIC_API_KEY env var, or pass api_key= explicitly.
+    """
+    def __init__(
+        self,
+        model: str = "claude-sonnet-4-6",
+        auth_mode: str | None = None,   # None = auto-detect
+        api_key: str | None = None,
+    ) -> None:
+        self._auth_mode = auth_mode or self._resolve_auth_mode(api_key)
+        self._model = model
+        self._api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+
+    @staticmethod
+    def _resolve_auth_mode(api_key: str | None) -> str:
+        """subscription if no API key present, api_key otherwise."""
+        if api_key or os.getenv("ANTHROPIC_API_KEY"):
+            return "api_key"
+        return "subscription"   # use Claude CLI subprocess
+
+    async def complete(self, messages, *, tools=None, **kwargs) -> str:
+        if self._auth_mode == "api_key":
+            return await self._complete_api(messages, tools, **kwargs)
+        return await self._complete_subscription(messages, **kwargs)
+
+    async def _complete_api(self, messages, tools, **kwargs) -> str:
+        client = AsyncAnthropic(api_key=self._api_key)
+        # ... standard Anthropic SDK call
+
+    async def _complete_subscription(self, messages, **kwargs) -> str:
+        # subprocess call to `claude` CLI (same as AIDE subscription mode)
+        # ...</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">Ollama + LiteLLM providers</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0"># swarm/providers/ollama.py
+class OllamaProvider:
+    """Local LLMs via Ollama (Gemma4, Qwen2.5b, etc.)"""
+    def __init__(
+        self,
+        model: str = "gemma3",      # or "qwen2.5:3b", etc.
+        host: str = "http://localhost:11434",
+    ) -> None: ...
+
+    async def complete(self, messages, **kwargs) -> str:
+        # HTTP POST to Ollama /api/chat
+        ...
+
+# swarm/providers/litellm.py
+class LiteLLMProvider:
+    """Any model via litellm (GPT-4, Gemini, Mistral, etc.)"""
+    def __init__(
+        self,
+        model: str,                  # "gpt-4o", "gemini/gemini-pro", etc.
+        api_key: str | None = None,
+        **litellm_kwargs,
+    ) -> None: ...
+
+    async def complete(self, messages, **kwargs) -> str:
+        import litellm
+        response = await litellm.acompletion(model=self._model, ...)
+        ...</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">Usage — provider selection</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0"># Default: Claude subscription (auth token, no API key needed)
+provider = ClaudeProvider()
+
+# Explicit API key mode
+provider = ClaudeProvider(auth_mode="api_key", api_key="sk-ant-...")
+
+# Open-source via Ollama
+provider = OllamaProvider(model="gemma3")
+provider = OllamaProvider(model="qwen2.5:3b")
+
+# Any model via LiteLLM
+provider = LiteLLMProvider(model="gpt-4o", api_key="sk-...")
+provider = LiteLLMProvider(model="gemini/gemini-2.0-flash")</pre>
+  </div>
+</div>

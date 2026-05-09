@@ -14,12 +14,12 @@
       "Bash(eslint:*)", "Bash(prettier:*)", "Bash(jest:*)", "Bash(vitest:*)",
       "Bash(python:*)", "Bash(python3:*)", "Bash(pip:*)", "Bash(pip3:*)",
       "Bash(uv:*)", "Bash(uvx:*)", "Bash(pytest:*)",
-      "Bash(ruff:*)", "Bash(mypy:*)"
-    ],
-    "ask": [
+      "Bash(ruff:*)", "Bash(mypy:*)",
       "Bash(git push:*)", "Bash(git reset:*)", "Bash(git rebase:*)", "Bash(git merge:*)",
       "Bash(npm publish:*)", "Bash(npm version:*)",
       "Bash(pip install:*)", "Bash(uv add:*)"
+    ],
+    "ask": [
     ],
     "deny": [
       "Bash(rm -rf:*)", "Bash(sudo:*)",

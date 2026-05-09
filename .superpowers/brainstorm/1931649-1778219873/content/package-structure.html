@@ -1,0 +1,74 @@
+<h2>Package Structure</h2>
+<p class="subtitle">Layered subpackages — each layer depends only on layers below it</p>
+
+<div class="mockup">
+  <div class="mockup-header">swarm/ — directory layout</div>
+  <div class="mockup-body">
+    <pre style="font-size:12px;line-height:1.7;color:#e0e0e0">swarm/
+├── __init__.py              # public API re-exports
+├── py.typed                 # PEP 561 marker
+
+├── core/                    # ── Layer 0: protocols + data types
+│   ├── __init__.py
+│   ├── protocols.py         # LLMProvider, Agent, Pattern, Tool protocols
+│   ├── types.py             # AgentResult, SwarmResult, SwarmContext, Message
+│   └── errors.py            # SwarmError, ProviderError, PatternError
+
+├── providers/               # ── Layer 1: LLM backends
+│   ├── __init__.py
+│   ├── base.py              # BaseProvider (implements LLMProvider protocol)
+│   ├── claude.py            # ClaudeProvider (auth token OR api key)
+│   ├── ollama.py            # OllamaProvider (Gemma4, Qwen-2.5b, etc.)
+│   └── litellm.py           # LiteLLMProvider (any litellm-supported model)
+
+├── agents/                  # ── Layer 2: agent implementations
+│   ├── __init__.py
+│   ├── base.py              # BaseAgent (implements Agent protocol)
+│   ├── llm_agent.py         # LLMAgent — config-driven declarative agent
+│   └── context.py           # SwarmContext implementation
+
+├── patterns/                # ── Layer 3: swarm pattern implementations
+│   ├── __init__.py
+│   ├── base.py              # BasePattern (implements Pattern protocol)
+│   ├── decentralized.py     # peer voting, no hierarchy
+│   ├── hierarchical.py      # coordinator → workers
+│   ├── parallel.py          # concurrent fan-out + merge
+│   ├── sequential.py        # strict ordered pipeline
+│   ├── adaptive.py          # dynamic routing based on confidence
+│   └── mesh.py              # P2P agent communication graph
+
+├── builder/                 # ── Layer 4: swarm composition
+│   ├── __init__.py
+│   ├── swarm.py             # Swarm builder class (fluent API)
+│   ├── dag.py               # DAG engine (nodes + edges)
+│   └── config.py            # serialize/deserialize to/from dict/YAML
+
+└── cli/                     # ── Layer 5: CLI interface
+    ├── __init__.py
+    └── main.py              # click/typer CLI commands</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <h3>Layer dependency rules</h3>
+  <pre style="font-size:12px;line-height:1.6;color:#e0e0e0">
+  cli  →  builder  →  patterns  →  agents  →  providers  →  core
+                                                               ↑
+                                                        (no external deps)
+  </pre>
+  <p style="color:#aaa;font-size:13px">Each layer imports only from layers to its right. <code>core</code> has zero deps. <code>providers</code> imports only <code>core</code>. Tests mock at protocol boundaries.</p>
+</div>
+
+<div class="section" style="margin-top:16px">
+  <h3>Public API surface (swarm/__init__.py)</h3>
+  <pre style="font-size:12px;background:#1a1a2e;padding:10px;border-radius:4px;color:#a8d8ea">from swarm import (
+    Swarm,           # builder
+    Agent,           # base agent class
+    LLMAgent,        # config-driven agent
+    ClaudeProvider,  # auth token or API key
+    OllamaProvider,  # open-source LLMs
+    LiteLLMProvider, # any model via litellm
+    AgentResult,     # typed message
+    SwarmContext,    # shared state store
+)</pre>
+</div>

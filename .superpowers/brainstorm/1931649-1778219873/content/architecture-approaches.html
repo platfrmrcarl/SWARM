@@ -1,0 +1,73 @@
+<h2>Core architecture approach</h2>
+<p class="subtitle">How the library is structured internally — affects testability, extensibility, and TDD workflow</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Protocol-first (Recommended)</h3>
+      <p>Define <code>typing.Protocol</code> interfaces for every boundary. Implementations plug in. No inheritance coupling. Maximum TDD ergonomics.</p>
+      <pre style="font-size:11px;margin-top:8px;background:#1a1a2e;padding:8px;border-radius:4px;color:#a8d8ea">class LLMProvider(Protocol):
+    async def complete(self, messages, **kw) -> str: ...
+
+class Agent(Protocol):
+    async def run(self, task, ctx) -> AgentResult: ...
+
+class Pattern(Protocol):
+    async def execute(self, agents, task, ctx) -> SwarmResult: ...
+
+# Test with simple mock — no mocking framework needed
+class FakeProvider:
+    async def complete(self, messages, **kw): return "ok"</pre>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>TDD-native: mock = any object with right methods</li><li>Zero coupling between layers</li><li>Add providers/patterns without touching core</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No IDE autocomplete on Protocol attrs (minor)</li><li>Slightly less familiar to beginners</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>ABC-first</h3>
+      <p>Abstract base classes with template method pattern. Familiar Python OOP. Subclass to extend.</p>
+      <pre style="font-size:11px;margin-top:8px;background:#1a1a2e;padding:8px;border-radius:4px;color:#a8d8ea">class Agent(ABC):
+    @abstractmethod
+    async def run(self, task, ctx) -> AgentResult: ...
+
+    def before_run(self, task): pass   # hook
+    def after_run(self, result): pass  # hook
+
+class MyAgent(Agent):
+    async def run(self, task, ctx):
+        return AgentResult(content="done")</pre>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>Familiar to most Python devs</li><li>Template hooks baked in</li><li>Good IDE support</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Subclassing couples consumers to base class</li><li>Harder to mock in tests</li><li>Diamond inheritance issues in complex hierarchies</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Dataclass + Functions (Functional)</h3>
+      <p>Agents are dataclasses. Patterns are pure async functions. No classes to subclass.</p>
+      <pre style="font-size:11px;margin-top:8px;background:#1a1a2e;padding:8px;border-radius:4px;color:#a8d8ea">@dataclass
+class Agent:
+    model: str
+    role: str
+    tools: list[Tool] = field(default_factory=list)
+    run: Callable | None = None  # override fn
+
+async def parallel_pattern(
+    agents: list[Agent], task: str, ctx: SwarmContext
+) -> SwarmResult:
+    results = await asyncio.gather(*[a.run(task, ctx) for a in agents])</pre>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>Simple, no inheritance</li><li>Trivial to serialize/deserialize</li><li>Functions easy to unit test</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Less extensible for complex custom agents</li><li>Loses OOP ergonomics users expect from "Agent" class</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,125 @@
+<h2>The 6 Swarm Patterns</h2>
+<p class="subtitle">All implement the <code>Pattern</code> protocol: <code>async execute(agents, task, ctx) → SwarmResult</code></p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+
+  <div class="mockup">
+    <div class="mockup-header">1. Sequential — ordered pipeline</div>
+    <div class="mockup-body" style="font-size:11px;line-height:1.6;color:#e0e0e0">
+      <pre>agent1 → agent2 → agent3 → result
+  each receives prior output as input</pre>
+      <b style="color:#7ec8e3">Key logic:</b>
+      <pre style="font-size:10.5px">result = task
+for agent in agents:
+    r = await agent.run(result, ctx)
+    ctx.add_result(r)
+    result = r.content   # chain output→input
+return SwarmResult(...)</pre>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">2. Parallel — concurrent fan-out</div>
+    <div class="mockup-body" style="font-size:11px;line-height:1.6;color:#e0e0e0">
+      <pre>       ┌→ agent1 →┐
+task ──├→ agent2 →┼── merge → result
+       └→ agent3 →┘</pre>
+      <b style="color:#7ec8e3">Key logic:</b>
+      <pre style="font-size:10.5px">results = await asyncio.gather(
+    *[agent.run(task, ctx) for agent in agents]
+)
+merged = merge_results(results)
+return SwarmResult(...)</pre>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">3. Hierarchical — coordinator + workers</div>
+    <div class="mockup-body" style="font-size:11px;line-height:1.6;color:#e0e0e0">
+      <pre>coordinator decomposes task →
+  worker1(subtask1), worker2(subtask2)
+coordinator synthesizes results</pre>
+      <b style="color:#7ec8e3">Key logic:</b>
+      <pre style="font-size:10.5px">coordinator, *workers = agents
+plan = await coordinator.run(task, ctx)
+subtasks = parse_subtasks(plan.content)
+results = await asyncio.gather(
+    *[w.run(s, ctx) for w,s in zip(workers, subtasks)]
+)
+final = await coordinator.run(
+    synthesize_prompt(results), ctx)
+return SwarmResult(...)</pre>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">4. Decentralized — peer consensus</div>
+    <div class="mockup-body" style="font-size:11px;line-height:1.6;color:#e0e0e0">
+      <pre>all agents respond independently →
+  vote/consensus mechanism →
+  majority or weighted result</pre>
+      <b style="color:#7ec8e3">Key logic:</b>
+      <pre style="font-size:10.5px">results = await asyncio.gather(
+    *[agent.run(task, ctx) for agent in agents]
+)
+# weighted by confidence score
+final = weighted_consensus(results)
+return SwarmResult(...)</pre>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">5. Adaptive — dynamic routing</div>
+    <div class="mockup-body" style="font-size:11px;line-height:1.6;color:#e0e0e0">
+      <pre>run agent → check confidence →
+  high: done
+  low:  route to specialist or retry</pre>
+      <b style="color:#7ec8e3">Key logic:</b>
+      <pre style="font-size:10.5px">agent_map = {a.name: a for a in agents}
+current = agents[0]
+for _ in range(max_hops):
+    result = await current.run(task, ctx)
+    if result.confidence >= threshold:
+        break
+    next_name = result.next_agent
+    if not next_name: break
+    current = agent_map[next_name]
+return SwarmResult(...)</pre>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">6. Mesh P2P — direct agent comms</div>
+    <div class="mockup-body" style="font-size:11px;line-height:1.6;color:#e0e0e0">
+      <pre>agent1 ←→ agent2 ←→ agent3
+  ↕                      ↕
+agent4 ←────────────→ agent5</pre>
+      <b style="color:#7ec8e3">Key logic:</b>
+      <pre style="font-size:10.5px"># agents can message each other via ctx
+# rounds of communication until stable
+for round in range(max_rounds):
+    results = await asyncio.gather(
+        *[a.run(task, ctx) for a in agents]
+    )
+    ctx.state["mesh_round"] = results
+    if converged(results): break
+return SwarmResult(...)</pre>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Shared pattern interface</h3>
+  <pre style="font-size:11.5px;background:#1a1a2e;padding:10px;border-radius:4px;color:#a8d8ea">class SequentialPattern:
+    async def execute(self, agents, task, ctx) -> SwarmResult: ...
+
+class ParallelPattern:
+    merge_strategy: str = "concatenate"  # or "vote", "synthesize"
+    async def execute(self, agents, task, ctx) -> SwarmResult: ...
+
+class AdaptivePattern:
+    confidence_threshold: float = 0.8
+    max_hops: int = 5
+    async def execute(self, agents, task, ctx) -> SwarmResult: ...</pre>
+</div>

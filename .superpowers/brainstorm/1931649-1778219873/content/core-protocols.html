@@ -1,0 +1,92 @@
+<h2>Core Protocols & Data Types</h2>
+<p class="subtitle">The contract boundaries everything else plugs into — <code>swarm/core/</code></p>
+
+<div class="mockup">
+  <div class="mockup-header">swarm/core/protocols.py</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0">from typing import Protocol, runtime_checkable, Any
+
+@runtime_checkable
+class LLMProvider(Protocol):
+    """Any object that can complete a list of messages."""
+    async def complete(
+        self,
+        messages: list[Message],
+        *,
+        tools: list[Tool] | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> str: ...
+
+@runtime_checkable
+class Agent(Protocol):
+    """Any object that can run a task with context."""
+    name: str
+    async def run(self, task: str, ctx: SwarmContext) -> AgentResult: ...
+
+@runtime_checkable
+class Pattern(Protocol):
+    """Any object that can orchestrate agents to complete a task."""
+    async def execute(
+        self,
+        agents: list[Agent],
+        task: str,
+        ctx: SwarmContext,
+    ) -> SwarmResult: ...
+
+@runtime_checkable
+class Tool(Protocol):
+    """Any callable with a name and schema."""
+    name: str
+    description: str
+    async def __call__(self, **kwargs: Any) -> Any: ...</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">swarm/core/types.py — data classes</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0">from dataclasses import dataclass, field
+from typing import Any
+
+@dataclass
+class Message:
+    role: str          # "user" | "assistant" | "system" | "tool"
+    content: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class AgentResult:
+    """Typed output from a single agent run."""
+    agent_name: str
+    content: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+    next_agent: str | None = None     # optional routing hint
+    confidence: float = 1.0           # used by adaptive pattern
+
+@dataclass
+class SwarmResult:
+    """Aggregate output from a full pattern execution."""
+    pattern: str
+    results: list[AgentResult]
+    final_output: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+class SwarmContext:
+    """Shared state store + message history for all agents in a swarm."""
+    def __init__(self) -> None:
+        self.state: dict[str, Any] = {}       # shared key-value store
+        self.history: list[Message] = []       # full conversation history
+        self.results: list[AgentResult] = []   # accumulated agent results
+
+    def add_result(self, result: AgentResult) -> None:
+        self.results.append(result)
+        self.history.append(Message("assistant", result.content,
+                                    {"agent": result.agent_name}))</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px">
+  <h3>Why <code>@runtime_checkable</code>?</h3>
+  <p style="color:#aaa;font-size:13px">Lets you write <code>assert isinstance(my_obj, Agent)</code> in tests — catches protocol violations at test time, not production. Any class with the right methods qualifies automatically (structural subtyping). No inheritance required.</p>
+</div>

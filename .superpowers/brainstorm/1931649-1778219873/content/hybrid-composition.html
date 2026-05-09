@@ -1,0 +1,58 @@
+<h2>How should hybrid patterns compose?</h2>
+<p class="subtitle">Choosing the composition model shapes every other API decision</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Graph / DAG</h3>
+      <p>Define nodes (patterns or agents) and explicit edges (data flow). Maximum control over topology.</p>
+      <pre style="font-size:11px;margin-top:8px;background:#1a1a2e;padding:8px;border-radius:4px;color:#a8d8ea">swarm = Graph()
+root = swarm.add(HierarchicalPattern(agents=[...]))
+workers = swarm.add(ParallelPattern(agents=[...]))
+swarm.edge(root, workers)
+swarm.run("task")</pre>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>Full topology control</li><li>Explicit data flow</li><li>Handles cycles</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Verbose</li><li>Overkill for simple cases</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Builder / Fluent Chain</h3>
+      <p>Compose patterns by chaining them. Output of each pattern feeds next by default.</p>
+      <pre style="font-size:11px;margin-top:8px;background:#1a1a2e;padding:8px;border-radius:4px;color:#a8d8ea">swarm = (Swarm()
+  .hierarchical(agents=[coordinator, ...])
+  .parallel(agents=[worker1, worker2])
+  .adaptive(agents=[reviewer])
+  .run("task"))</pre>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>Readable, fluent</li><li>Simple cases are simple</li><li>No boilerplate</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Linear only (no branching)</li><li>Less explicit data flow</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Declarative Config</h3>
+      <p>Define full swarm topology as a dict or YAML. Great for CLI usage and serialization.</p>
+      <pre style="font-size:11px;margin-top:8px;background:#1a1a2e;padding:8px;border-radius:4px;color:#a8d8ea">swarm = Swarm.from_config({
+  "patterns": [
+    {"type": "hierarchical", "agents": [...]},
+    {"type": "parallel",     "agents": [...],
+     "after": 0}
+  ]
+})
+swarm.run("task")</pre>
+      <div class="pros-cons" style="margin-top:8px">
+        <div class="pros"><h4>Pros</h4><ul><li>Serializable / shareable</li><li>CLI-native</li><li>Easy to test</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Verbose for dynamic use</li><li>Less Pythonic</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

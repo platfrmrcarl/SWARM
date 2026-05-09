@@ -1,0 +1,96 @@
+<h2>CLI Interface</h2>
+<p class="subtitle">Typer-based CLI — wraps the SDK, config-driven — <code>swarm/cli/main.py</code></p>
+
+<div class="mockup">
+  <div class="mockup-header">Commands</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0">swarm run       # run a swarm from config file or inline pattern
+swarm init      # scaffold a swarm config file
+swarm validate  # validate a config file without running
+swarm export    # export a programmatic swarm to YAML config</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">swarm run — main entry point</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0"># From config file
+swarm run --config swarm.yaml "Write a market analysis"
+
+# Inline single pattern (no config file needed)
+swarm run --pattern hierarchical \
+          --agents coordinator,worker1,worker2 \
+          --provider claude \
+          "Analyze this codebase for security issues"
+
+# With API key
+swarm run --config swarm.yaml --api-key sk-ant-... "task"
+
+# With Ollama
+swarm run --config swarm.yaml --provider ollama --model gemma3 "task"
+
+# Output formats
+swarm run --config swarm.yaml --output json "task"
+swarm run --config swarm.yaml --output markdown "task"</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">swarm.yaml — config file format</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0">provider:
+  type: claude          # claude | ollama | litellm
+  model: claude-sonnet-4-6
+  auth_mode: subscription  # subscription (default) | api_key
+
+agents:
+  coordinator:
+    system_prompt: "You are a coordinator. Break tasks into subtasks."
+  researcher:
+    system_prompt: "You are a thorough researcher."
+  writer:
+    system_prompt: "You write clear, structured reports."
+
+swarm:
+  - name: plan
+    pattern: hierarchical
+    agents: [coordinator, researcher]
+  - name: research
+    pattern: parallel
+    agents: [researcher, researcher]
+    after: plan
+    merge: synthesize
+  - name: write
+    pattern: sequential
+    agents: [writer]
+    after: research</pre>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">swarm/cli/main.py — implementation sketch</div>
+  <div class="mockup-body">
+    <pre style="font-size:11.5px;line-height:1.7;color:#e0e0e0">import typer, asyncio, yaml
+from swarm import Swarm, ClaudeProvider, LLMAgent
+
+app = typer.Typer()
+
+@app.command()
+def run(
+    task: str,
+    config: Path = typer.Option(...),
+    api_key: str | None = typer.Option(None, envvar="ANTHROPIC_API_KEY"),
+    output: str = typer.Option("text"),
+):
+    cfg = yaml.safe_load(config.read_text())
+    provider = build_provider(cfg["provider"], api_key)
+    agents = {name: LLMAgent(name, provider, **spec)
+              for name, spec in cfg["agents"].items()}
+    swarm = Swarm.from_config(cfg["swarm"], agents)
+    result = asyncio.run(swarm.run(task))
+    print_result(result, output)
+
+if __name__ == "__main__":
+    app()</pre>
+  </div>
+</div>
