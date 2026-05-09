@@ -14,6 +14,11 @@ from swarm.patterns.variant_judge import VariantJudgePattern
 from swarm.patterns.reflection import ReflectionPattern
 from swarm.patterns.broadcast import BroadcastPattern
 from swarm.patterns.auction import AuctionPattern
+from swarm.patterns.mixture_of_agents import MixtureOfAgentsPattern
+from swarm.patterns.debate import DebatePattern
+from swarm.patterns.tree_of_thoughts import TreeOfThoughtsPattern
+from swarm.patterns.speculative import SpeculativePattern
+from swarm.patterns.blackboard import BlackboardPattern
 
 
 class Swarm:
@@ -67,6 +72,21 @@ class Swarm:
 
     def auction(self, name: str, agents: list[Agent], *, after: str | list[str] | None = None) -> "Swarm":
         return self._add_node(name, AuctionPattern(), agents, after)
+
+    def mixture_of_agents(self, name: str, agents: list[Agent], *, after: str | list[str] | None = None) -> "Swarm":
+        return self._add_node(name, MixtureOfAgentsPattern(), agents, after)
+
+    def debate(self, name: str, agents: list[Agent], *, max_rounds: int = 3, after: str | list[str] | None = None) -> "Swarm":
+        return self._add_node(name, DebatePattern(max_rounds=max_rounds), agents, after)
+
+    def tree_of_thoughts(self, name: str, agents: list[Agent], *, max_depth: int = 3, branching_factor: int = 2, after: str | list[str] | None = None) -> "Swarm":
+        return self._add_node(name, TreeOfThoughtsPattern(max_depth=max_depth, branching_factor=branching_factor), agents, after)
+
+    def speculative(self, name: str, agents: list[Agent], *, threshold: float = 0.8, after: str | list[str] | None = None) -> "Swarm":
+        return self._add_node(name, SpeculativePattern(threshold=threshold), agents, after)
+
+    def blackboard(self, name: str, agents: list[Agent], *, max_rounds: int = 5, after: str | list[str] | None = None) -> "Swarm":
+        return self._add_node(name, BlackboardPattern(max_rounds=max_rounds), agents, after)
 
     async def run(self, task: str, ctx: SwarmContext | None = None) -> SwarmResult:
         return await self._dag.execute(task, ctx or SwarmContext())

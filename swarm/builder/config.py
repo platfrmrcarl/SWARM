@@ -39,6 +39,24 @@ def pattern_from_name(name: str, entry: dict) -> Pattern:
     if name == "auction":
         from swarm.patterns.auction import AuctionPattern
         return AuctionPattern()
+    if name in ("mixture_of_agents", "mixtureofagents", "moa"):
+        from swarm.patterns.mixture_of_agents import MixtureOfAgentsPattern
+        return MixtureOfAgentsPattern()
+    if name == "debate":
+        from swarm.patterns.debate import DebatePattern
+        return DebatePattern(max_rounds=entry.get("max_rounds", 3))
+    if name in ("tree_of_thoughts", "treeofthoughts", "tot"):
+        from swarm.patterns.tree_of_thoughts import TreeOfThoughtsPattern
+        return TreeOfThoughtsPattern(
+            max_depth=entry.get("max_depth", 3),
+            branching_factor=entry.get("branching_factor", 2),
+        )
+    if name == "speculative":
+        from swarm.patterns.speculative import SpeculativePattern
+        return SpeculativePattern(threshold=entry.get("threshold", 0.8))
+    if name == "blackboard":
+        from swarm.patterns.blackboard import BlackboardPattern
+        return BlackboardPattern(max_rounds=entry.get("max_rounds", 5))
     raise ValueError(f"Unknown pattern: {name!r}")
 
 
