@@ -276,6 +276,105 @@ Swarm().auction("bid", [bidder1, bidder2, bidder3])
 
 ---
 
+### Mixture of Agents (MoA)
+
+All agents except the last run in parallel as *proposers*. The last agent is the *aggregator* — it receives all proposals and synthesises a single answer.
+
+```
+         ┌─[proposer1]─┐
+input ───┼─[proposer2]─┼──► aggregator ──► final
+         └─[proposer3]─┘
+```
+
+```python
+Swarm().mixture_of_agents("moa", [proposer1, proposer2, proposer3, aggregator])
+```
+
+Requires at least 2 agents (1 proposer + aggregator).
+
+**Use when:** you want diverse perspectives collapsed into one high-quality answer — research synthesis, consensus summarisation, ensemble reasoning.
+
+---
+
+### Debate (MAD)
+
+Agents debate in rounds. Round 0: each agent responds independently. Subsequent rounds: each agent receives the other agents' prior responses and revises. Exits early if all agents converge on the same answer.
+
+```
+round 0: [a1][a2][a3]  (independent)
+round 1: [a1 sees a2,a3][a2 sees a1,a3][a3 sees a1,a2]
+...  ──► converged / max_rounds reached
+```
+
+```python
+Swarm().debate("argue", [agent1, agent2, agent3], max_rounds=3)
+```
+
+Requires at least 2 agents.
+
+**Use when:** adversarial challenge improves answer quality — fact-checking, strategy evaluation, red-teaming.
+
+---
+
+### Tree of Thoughts (ToT)
+
+Expands a tree of reasoning branches depth-first. At each depth, *reasoner* agents expand each current thought; the last agent acts as a *validator* and scores branches by confidence. Low-scoring branches are pruned; only the top `branching_factor` branches survive to the next depth. Exits early if a single branch reaches confidence ≥ 0.9.
+
+```
+depth 0:  [thought]
+depth 1:  [branch_a][branch_b]  ──► validator prunes to top 2
+depth 2:  [a1][a2][b1][b2]      ──► validator picks winner
+```
+
+```python
+Swarm().tree_of_thoughts("tot", [reasoner1, reasoner2, validator],
+                          max_depth=3, branching_factor=2)
+```
+
+Requires at least 2 agents (≥1 reasoner + validator).
+
+**Use when:** tasks benefit from exploring multiple reasoning paths with pruning — math problems, planning, multi-step logic.
+
+---
+
+### Speculative
+
+Exactly 2 agents: a fast *speculator* and a slower, higher-quality *actor*. The speculator runs first. If its confidence meets the threshold, the result is returned immediately (actor skipped). Otherwise the actor runs and its result is final.
+
+```
+[speculator] ──► conf >= threshold? ──► done (fast path)
+                        │
+                        └──► [actor] ──► done (quality path)
+```
+
+```python
+Swarm().speculative("fast", [speculator, actor], threshold=0.8)
+```
+
+Requires exactly 2 agents.
+
+**Use when:** most inputs are easy (speculator handles them cheaply) but hard inputs need a stronger model — latency-sensitive pipelines with occasional difficult queries.
+
+---
+
+### Blackboard
+
+Agents write to a shared `blackboard` dict each round. Each agent sees the full blackboard contents as context. Rounds repeat until the blackboard stabilises (no changes) or `max_rounds` is reached.
+
+```
+round 1: agent1 writes, agent2 writes, agent3 writes
+round 2: all re-read board, update if needed
+...  ──► stable / max_rounds reached
+```
+
+```python
+Swarm().blackboard("collab", [agent1, agent2, agent3], max_rounds=5)
+```
+
+**Use when:** agents need to collaboratively build shared state — co-authoring, iterative refinement, distributed knowledge assembly.
+
+---
+
 ## Combining Patterns
 
 Every stage method returns the `Swarm` instance, so you can chain them. By default each stage depends on the previous one. Use `after=` to wire arbitrary DAGs.
@@ -361,6 +460,48 @@ print(f"Steps:   {len(result.results)}")
 
 ---
 
+### Using new patterns together
+
+```python
+from swarm import Swarm, LLMAgent, ClaudeProvider
+
+provider = ClaudeProvider(model="claude-sonnet-4-6")
+
+def agent(name, prompt=""):
+    return LLMAgent(name, provider, system_prompt=prompt)
+
+# Fast speculative triage → multi-perspective proposals → debate to challenge → blackboard refinement
+result = (
+    Swarm()
+    # Quick classifier; if confident, skip the deep analyst
+    .speculative("triage",
+        [agent("quick_clf", "Classify the query domain in one word."),
+         agent("deep_clf",  "Classify the query domain with full reasoning.")],
+        threshold=0.85)
+    # Multiple experts propose answers in parallel, aggregator synthesises
+    .mixture_of_agents("propose",
+        [agent("expert_a", "Answer from a security perspective."),
+         agent("expert_b", "Answer from a performance perspective."),
+         agent("expert_c", "Answer from an architecture perspective."),
+         agent("synthesiser", "Combine the proposals into one coherent answer.")])
+    # Agents challenge each other to surface weaknesses
+    .debate("challenge",
+        [agent("devil",    "Find flaws and counter-arguments."),
+         agent("defender", "Defend the proposal and rebut critiques.")],
+        max_rounds=2)
+    # Final collaborative refinement via shared blackboard
+    .blackboard("refine",
+        [agent("editor",  "Improve clarity and structure."),
+         agent("checker", "Verify correctness and add missing detail.")],
+        max_rounds=3)
+    .run_sync("How should we design authentication for a high-traffic SaaS API?")
+)
+
+print(result.final_output)
+```
+
+---
+
 ## Config file + CLI
 
 Scaffold a config:
@@ -421,6 +562,11 @@ swarm validate --config swarm.yaml
 | `reflection` | `(name, agents, *, max_iterations=3, after=None)` | Generator-critic loop |
 | `broadcast` | `(name, agents, *, after=None)` | Fan-out, collect all |
 | `auction` | `(name, agents, *, after=None)` | All bid, highest confidence wins |
+| `mixture_of_agents` | `(name, agents, *, after=None)` | Proposers + aggregator synthesises |
+| `debate` | `(name, agents, *, max_rounds=3, after=None)` | Multi-round adversarial debate |
+| `tree_of_thoughts` | `(name, agents, *, max_depth=3, branching_factor=2, after=None)` | Branch-and-prune reasoning tree |
+| `speculative` | `(name, agents, *, threshold=0.8, after=None)` | Fast speculator, fallback to actor |
+| `blackboard` | `(name, agents, *, max_rounds=5, after=None)` | Shared state, iterate to stability |
 | `run` | `(task, ctx=None) -> SwarmResult` | Execute (async) |
 | `run_sync` | `(task) -> SwarmResult` | Execute (sync) |
 | `to_config` | `() -> list[dict]` | Serialise to config |
@@ -449,5 +595,5 @@ result.next_agent   # str | None  (used by AdaptivePattern)
 
 ```bash
 pip install -e ".[dev]"
-pytest          # 64 tests
+pytest          # 95 tests
 ```
