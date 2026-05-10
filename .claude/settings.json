@@ -1,31 +1,374 @@
 {
   "permissions": {
-    "allow": [
-      "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch",
-      "Bash(ls:*)", "Bash(cat:*)", "Bash(pwd)", "Bash(echo:*)", "Bash(which:*)",
-      "Bash(tree:*)", "Bash(find:*)", "Bash(head:*)", "Bash(tail:*)",
-      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)",
-      "Bash(git branch:*)", "Bash(git add:*)", "Bash(git commit:*)",
-      "Bash(git checkout:*)", "Bash(git switch:*)", "Bash(git pull)",
-      "Bash(git fetch:*)", "Bash(git stash:*)",
-      "Bash(npm install:*)", "Bash(npm run:*)", "Bash(npm test:*)",
-      "Bash(npm ci)", "Bash(npm list:*)", "Bash(npx:*)", "Bash(pnpm:*)", "Bash(yarn:*)",
-      "Bash(tsc:*)", "Bash(tsx:*)", "Bash(node:*)",
-      "Bash(eslint:*)", "Bash(prettier:*)", "Bash(jest:*)", "Bash(vitest:*)",
-      "Bash(python:*)", "Bash(python3:*)", "Bash(pip:*)", "Bash(pip3:*)",
-      "Bash(uv:*)", "Bash(uvx:*)", "Bash(pytest:*)",
-      "Bash(ruff:*)", "Bash(mypy:*)",
-      "Bash(git push:*)", "Bash(git reset:*)", "Bash(git rebase:*)", "Bash(git merge:*)",
-      "Bash(npm publish:*)", "Bash(npm version:*)",
-      "Bash(pip install:*)", "Bash(uv add:*)"
+    "fileSystem": {
+      "createFiles": true,
+      "editFiles": true,
+      "deleteFiles": true,
+      "createDirectories": true,
+      "readEnvFiles": true,
+      "maxDiskUsage": "50GB"
+    },
+    "execution": {
+      "runBashCommands": true,
+      "runPythonScripts": true,
+      "runNodeScripts": true,
+      "installPackages": true,
+      "executeDeployments": true,
+      "maxConcurrentProcesses": 5
+    },
+    "apis": {
+      "makeExternalCalls": true,
+      "accessCredentials": true,
+      "storeSecrets": true,
+      "rateLimit": "adaptive"
+    },
+    "cloudPlatforms": {
+      "gcp": true,
+      "firebase": true,
+      "cloudRun": true,
+      "cloudFunctions": true,
+      "vertexAi": true,
+      "firestore": true
+    },
+    "versionControl": {
+      "createRepos": true,
+      "commitCode": true,
+      "pushToRemote": true,
+      "createBranches": true
+    }
+  },
+  "credentials": {
+    "gcp": {
+      "projectId": "${GCP_PROJECT_ID}",
+      "credentials": "${GOOGLE_APPLICATION_CREDENTIALS}",
+      "region": "us-central1",
+      "fallbackRegion": "us-east1"
+    },
+    "anthropic": {
+      "apiKey": "${ANTHROPIC_API_KEY}",
+      "model": "claude-opus-4-6",
+      "fallbackModel": "claude-sonnet-4-6",
+      "maxTokens": 4096,
+      "batchingEnabled": true,
+      "promptCaching": true
+    },
+    "googleAdk": {
+      "apiKey": "${GOOGLE_ADK_API_KEY}",
+      "projectId": "${GCP_PROJECT_ID}",
+      "vertexAiEndpoint": "us-central1-aiplatform.googleapis.com"
+    },
+    "firebase": {
+      "projectId": "${FIREBASE_PROJECT_ID}",
+      "serviceAccountKey": "${FIREBASE_SERVICE_ACCOUNT_KEY}",
+      "databaseUrl": "${FIREBASE_DATABASE_URL}",
+      "storageBucket": "${FIREBASE_STORAGE_BUCKET}"
+    },
+    "linkedIn": {
+      "clientId": "${LINKEDIN_CLIENT_ID}",
+      "clientSecret": "${LINKEDIN_CLIENT_SECRET}",
+      "accessToken": "${LINKEDIN_ACCESS_TOKEN}",
+      "refreshToken": "${LINKEDIN_REFRESH_TOKEN}",
+      "tokenExpiry": 3600
+    },
+    "stripe": {
+      "apiKey": "${STRIPE_API_KEY}",
+      "publishableKey": "${STRIPE_PUBLISHABLE_KEY}",
+      "webhookSecret": "${STRIPE_WEBHOOK_SECRET}"
+    },
+    "github": {
+      "token": "${GITHUB_TOKEN}",
+      "username": "${GITHUB_USERNAME}",
+      "defaultOrg": "${GITHUB_ORG}"
+    }
+  },
+  "deployment": {
+    "targets": {
+      "cloudRun": {
+        "enabled": true,
+        "projectId": "${GCP_PROJECT_ID}",
+        "region": "us-central1",
+        "memory": "2Gi",
+        "cpu": "2",
+        "timeout": 3600,
+        "concurrency": 80,
+        "allowUnauthenticated": false
+      },
+      "cloudFunctions": {
+        "enabled": true,
+        "projectId": "${GCP_PROJECT_ID}",
+        "region": "us-central1",
+        "runtime": "nodejs20",
+        "memory": "1024MB",
+        "timeout": 540,
+        "allowUnauthenticated": false
+      },
+      "firebaseHosting": {
+        "enabled": true,
+        "projectId": "${FIREBASE_PROJECT_ID}",
+        "siteId": "${FIREBASE_SITE_ID}"
+      },
+      "appEngine": {
+        "enabled": true,
+        "projectId": "${GCP_PROJECT_ID}",
+        "runtime": "nodejs20",
+        "env": "standard"
+      }
+    },
+    "defaultTarget": "cloudRun",
+    "buildBehavior": "automatic",
+    "deploymentChecks": {
+      "validateDeployment": true,
+      "runHealthChecks": true,
+      "rollbackOnFailure": true,
+      "maxDeploymentTime": 600
+    }
+  },
+  "tools": {
+    "docker": {
+      "enabled": true,
+      "buildImages": true,
+      "pushToRegistry": true,
+      "registryUrl": "gcr.io/${GCP_PROJECT_ID}",
+      "imageNamePrefix": "agent-"
+    },
+    "git": {
+      "enabled": true,
+      "autoCommit": true,
+      "commitMessagePrefix": "[agent]",
+      "pushAfterCommit": true,
+      "defaultBranch": "main"
+    },
+    "npm": {
+      "enabled": true,
+      "installDependencies": true,
+      "updateLockfile": true,
+      "auditFix": true
+    },
+    "python": {
+      "enabled": true,
+      "installDependencies": true,
+      "venv": true
+    }
+  },
+  "execution": {
+    "planning": {
+      "enabled": true,
+      "detailLevel": "medium",
+      "showArchitecture": true,
+      "estimateTime": true
+    },
+    "buildStrategy": {
+      "incremental": true,
+      "testAsYouGo": true,
+      "minimumViablePath": true,
+      "failFast": true
+    },
+    "errorHandling": {
+      "retryAttempts": 3,
+      "exponentialBackoff": true,
+      "gracefulDegradation": true,
+      "logErrors": true,
+      "alertOnCritical": true
+    },
+    "timeouts": {
+      "apiCall": 30,
+      "deployment": 600,
+      "test": 300,
+      "build": 900
+    }
+  },
+  "safety": {
+    "irreversibleOperations": {
+      "deleteProductionData": "ask",
+      "dropDatabase": "ask",
+      "revokeLongTermTokens": "ask",
+      "changeBillingSettings": "ask"
+    },
+    "securitySensitive": {
+      "modifyAuthRules": "log_and_execute",
+      "exposeCredentials": "block",
+      "modifySSLCertificates": "ask",
+      "changeFirewallRules": "ask"
+    },
+    "dataHandling": {
+      "encryptionAtRest": true,
+      "encryptionInTransit": true,
+      "logSensitiveData": false,
+      "dataRetention": 30
+    },
+    "rateAndQuota": {
+      "enforceRateLimits": true,
+      "trackApiUsage": true,
+      "estimateCosts": true,
+      "alertOnHighCost": true,
+      "costThreshold": 100
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "outputs": [
+      "console",
+      "file",
+      "cloud_logging"
     ],
-    "ask": [
-    ],
-    "deny": [
-      "Bash(rm -rf:*)", "Bash(sudo:*)",
-      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git reset --hard:*)",
-      "Read(./.env)", "Read(./.env.*)", "Read(./**/.env)", "Read(./**/.env.*)",
-      "Read(./**/serviceAccountKey.json)", "Read(./**/*.pem)", "Read(./**/*.key)"
-    ]
-  }
+    "file": {
+      "path": "./logs",
+      "maxSize": "100MB",
+      "retention": 30
+    },
+    "cloudLogging": {
+      "enabled": true,
+      "projectId": "${GCP_PROJECT_ID}",
+      "logName": "projects/${GCP_PROJECT_ID}/logs/agent-execution"
+    },
+    "logContent": {
+      "taskStart": true,
+      "decisions": true,
+      "apiCalls": true,
+      "errors": true,
+      "deploymentEvents": true,
+      "timings": true,
+      "resourceUsage": true
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metricsBackend": "cloudMonitoring",
+    "metrics": {
+      "taskExecutionTime": true,
+      "successRate": true,
+      "errorRate": true,
+      "apiLatency": true,
+      "deploymentSuccess": true,
+      "resourceUsage": true
+    },
+    "alerts": {
+      "failedDeployment": {
+        "enabled": true,
+        "severity": "critical"
+      },
+      "highErrorRate": {
+        "enabled": true,
+        "threshold": 0.05,
+        "severity": "warning"
+      },
+      "highCost": {
+        "enabled": true,
+        "threshold": 100,
+        "severity": "warning"
+      }
+    }
+  },
+  "environment": {
+    "nodeEnv": "production",
+    "pythonVersion": "3.11",
+    "nodeVersion": "20",
+    "timezone": "UTC",
+    "locale": "en_US.UTF-8",
+    "workingDirectory": "./workspace",
+    "tempDirectory": "/tmp",
+    "cacheDirectory": "./.cache"
+  },
+  "communication": {
+    "progressUpdates": {
+      "enabled": true,
+      "frequency": "frequent",
+      "detail": "medium"
+    },
+    "errorReports": {
+      "enabled": true,
+      "format": "detailed",
+      "includeStackTrace": true
+    },
+    "completionSummary": {
+      "enabled": true,
+      "includeMetrics": true,
+      "includeDecisions": true
+    }
+  },
+  "caching": {
+    "enabled": true,
+    "apiResponses": true,
+    "buildArtifacts": true,
+    "dependencies": true,
+    "maxCacheSize": "10GB",
+    "cacheExpiry": 86400
+  },
+  "defaults": {
+    "language": "typescript",
+    "framework": "next.js",
+    "database": "firestore",
+    "authentication": "firebase-auth",
+    "messaging": "vertex-ai",
+    "imageGeneration": "imagen-3",
+    "storage": "firebase-storage",
+    "codeStyle": "prettier",
+    "linting": "eslint"
+  },
+  "features": {
+    "promptCaching": {
+      "enabled": true,
+      "cacheSize": "large"
+    },
+    "batchProcessing": {
+      "enabled": true,
+      "batchSize": 100,
+      "maxWaitTime": 300
+    },
+    "streaming": {
+      "enabled": true,
+      "chunkSize": 1024
+    },
+    "parallelExecution": {
+      "enabled": true,
+      "maxWorkers": 4
+    }
+  },
+  "integrations": {
+    "slack": {
+      "enabled": false,
+      "webhookUrl": "${SLACK_WEBHOOK_URL}",
+      "notifyOnCompletion": false,
+      "notifyOnError": true
+    },
+    "email": {
+      "enabled": false,
+      "service": "sendgrid",
+      "apiKey": "${SENDGRID_API_KEY}",
+      "notifyOnCompletion": false
+    },
+    "pagerduty": {
+      "enabled": false,
+      "integrationKey": "${PAGERDUTY_INTEGRATION_KEY}",
+      "alertOnCritical": true
+    }
+  },
+  "optimization": {
+    "codeOptimization": {
+      "minifyCode": true,
+      "treeShakinig": true,
+      "bundleAnalysis": true
+    },
+    "performance": {
+      "caching": true,
+      "compression": true,
+      "cdn": true
+    },
+    "cost": {
+      "rightSizing": true,
+      "spotInstances": false,
+      "autoScaling": true
+    }
+  },
+  "documentation": {
+    "generateREADME": true,
+    "generateArchitectureDocs": true,
+    "generateAPIDocs": true,
+    "generateDeploymentGuide": true,
+    "updateDecisionLog": true
+  },
+  "version": "1.0",
+  "lastUpdated": "2026-05-09",
+  "author": "Carl @ Platfrmr"
 }

@@ -9,13 +9,13 @@ A Python library for composing multi-agent AI pipelines using declarative coordi
 ## Install
 
 ```bash
-pip install swarm
+pip install platfrmr-swarm
 ```
 
 Requires Python 3.11+. LiteLLM support is optional:
 
 ```bash
-pip install "swarm[litellm]"
+pip install "platfrmr-swarm[litellm]"
 ```
 
 ---
