@@ -1,4 +1,11 @@
 {
+  "agent": {
+    "name": "Autonomous Builder",
+    "version": "1.0",
+    "mode": "production",
+    "autonomyLevel": "high",
+    "description": "Agentic system for building, deploying, and iterating on software systems with first principles approach"
+  },
   "permissions": {
     "fileSystem": {
       "createFiles": true,
