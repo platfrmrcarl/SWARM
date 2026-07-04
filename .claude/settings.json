@@ -42,7 +42,21 @@
       "commitCode": true,
       "pushToRemote": true,
       "createBranches": true
-    }
+    },
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git *)",
+      "Bash(docker *)",
+      "Bash(gcloud *)",
+      "Bash(stripe *)",
+      "Edit(*)",
+      "Read(*)",
+      "Write(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(gcloud * delete *)"
+    ]
   },
   "credentials": {
     "gcp": {
@@ -377,5 +391,9 @@
   },
   "version": "1.0",
   "lastUpdated": "2026-05-09",
-  "author": "Carl @ Platfrmr"
+  "author": "Carl @ Platfrmr",
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "stripe@claude-plugins-official": true
+  }
 }
